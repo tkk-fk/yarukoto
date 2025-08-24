@@ -70,10 +70,6 @@
     border:2px solid #aeb8c4; display:grid; place-items:center;
   }
   .done:checked{ background:#1ddb7a; border-color:#1ddb7a }
-  /* 大きく表示モード */
-  .big .item{ padding:16px }
-  .big .num{ width:54px; height:54px; font-size:1.25rem }
-  .big .txt{ font-size:clamp(1.3rem, 4.2vw, 1.6rem) }
   /* 印刷 */
   @media print{
     .bar, .hint, .ctrls, .done { display:none !important }
@@ -98,7 +94,6 @@
         <input id="newText" type="text" placeholder="例）１じかんめ：さんすうのプリント" />
         <button id="addBtn">追加</button>
         <button id="printBtn" class="secondary">印刷</button>
-        <button id="bigBtn" class="ghost">大きく表示</button>
         <button id="clearBtn" class="danger">ぜんぶ消す</button>
       </div>
       <div class="hint">Enter でも追加／項目はその場で書き換えOK／上↓で並び替え／✔で完了。自動保存されます。</div>
@@ -114,7 +109,6 @@
   const inputEl = document.getElementById('newText');
   const addBtn  = document.getElementById('addBtn');
   const printBtn= document.getElementById('printBtn');
-  const bigBtn  = document.getElementById('bigBtn');
   const clearBtn= document.getElementById('clearBtn');
   const titleEl = document.getElementById('title');
   const root    = document.getElementById('root');
@@ -206,10 +200,6 @@
     if(e.key==='Enter'){ e.preventDefault(); addBtn.click(); }
   });
   printBtn.addEventListener('click', ()=> window.print());
-  bigBtn.addEventListener('click', ()=>{
-    document.body.classList.toggle('big');
-    bigBtn.textContent = document.body.classList.contains('big') ? 'ふつう表示' : '大きく表示';
-  });
   clearBtn.addEventListener('click', ()=>{
     if(confirm('ぜんぶ消します。よろしいですか？')){
       stepsEl.innerHTML=''; save(); renumber();
