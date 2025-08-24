@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>見通しボード｜やること順番リスト</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#111; --muted:#eef1f5; --acc:#1e90ff; --danger:#ff5d5d;
+  }
+  *{ box-sizing:border-box }
+  html,body{ height:100% }
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family: system-ui,-apple-system,"BIZ UDPGothic","Noto Sans JP","Yu Gothic UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    line-height:1.6;
+  }
+  header{
+    position:sticky; top:0; z-index:10;
+    background:#fff8; backdrop-filter: blur(6px);
+    border-bottom:1px solid #e5e7eb;
+  }
+  .wrap{ max-width:900px; margin:0 auto; padding:16px; }
+  h1{
+    margin:0 0 6px; font-size: clamp(1.2rem, 3.5vw, 1.8rem);
+    display:flex; gap:8px; align-items:center;
+  }
+  h1 span[contenteditable]{
+    outline:none; padding:2px 6px; border-radius:8px;
+  }
+  h1 span[contenteditable]:focus{ background:#fff3 }
+  .bar{
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  }
+  input[type="text"]{
+    flex:1 1 260px; font-size:1.05rem; padding:10px 12px;
+    border:2px solid #dbe1e8; border-radius:12px; background:#fff;
+  }
+  button{
+    font-size:1rem; padding:10px 14px; border:0; cursor:pointer;
+    border-radius:12px; background:var(--acc); color:#fff;
+  }
+  button.secondary{ background:#eef2f7; color:#111 }
+  button.danger{ background:var(--danger) }
+  button.ghost{ background:transparent; color:#111; border:1px solid #dbe1e8 }
+  .hint{ font-size:.9rem; color:#555 }
+  main{ padding:10px 16px 80px }
+  ol#steps{
+    counter-reset: stepCounter;
+    list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;
+  }
+  .item{
+    display:grid; grid-template-columns: auto 1fr auto;
+    align-items:center; gap:10px;
+    padding:12px; border:2px solid #e5e9f0; border-radius:14px; background:#fff;
+  }
+  .num{
+    width:44px; height:44px; border-radius:12px;
+    display:grid; place-items:center; background:var(--muted); font-weight:700; font-size:1.1rem;
+  }
+  .txt[contenteditable]{
+    padding:8px 10px; border-radius:10px; outline:none; min-height:40px;
+    font-size: clamp(1.05rem, 3.8vw, 1.3rem); word-break: break-word;
+  }
+  .txt[contenteditable]:focus{ box-shadow: inset 0 0 0 3px #eaf2ff }
+  .ctrls{ display:flex; gap:6px }
+  .ctrls button{ padding:8px 10px; font-size:.95rem }
+  .done{
+    appearance:none; width:28px; height:28px; border-radius:8px;
+    border:2px solid #aeb8c4; display:grid; place-items:center;
+  }
+  .done:checked{ background:#1ddb7a; border-color:#1ddb7a }
+  /* 大きく表示モード */
+  .big .item{ padding:16px }
+  .big .num{ width:54px; height:54px; font-size:1.25rem }
+  .big .txt{ font-size:clamp(1.3rem, 4.2vw, 1.6rem) }
+  /* 印刷 */
+  @media print{
+    header, .hint, .ctrls button:not(.ghost){ display:none !important }
+    body{ background:#fff }
+    .wrap{ max-width:none; padding:0 }
+    main{ padding:0 }
+    .print-head{
+      display:flex; justify-content:space-between; align-items:flex-end; margin:0 0 8px;
+      font-size:14pt;
+    }
+    .print-head small{ font-size:11pt }
+    ol#steps{ gap:8pt }
+    .item{ border:1pt solid #000; border-radius:8pt; padding:10pt; page-break-inside:avoid }
+    .num{ background:#fff; border:1pt solid #000; width:28pt; height:28pt; border-radius:6pt; font-size:12pt }
+    .done{ width:18pt; height:18pt; border:1.5pt solid #000 }
+    .txt{ font-size:14pt; min-height:20pt }
+    @page{ size: A4; margin: 12mm }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>見通しボード：<span id="title" contenteditable="plaintext-only" spellcheck="false">きょうのやること</span></h1>
+      <div class="bar">
+        <input id="newText" type="text" placeholder="例）１じかんめ：さんすうのプリント" />
+        <button id="addBtn">追加</button>
+        <button id="printBtn" class="secondary">印刷</button>
+        <button id="bigBtn" class="ghost">大きく表示</button>
+        <button id="clearBtn" class="danger">ぜんぶ消す</button>
+      </div>
+      <div class="hint">Enter でも追加／項目はその場で書き換えOK／上↓で並び替え／✔で完了。自動保存されます。</div>
+    </div>
+  </header>
+
+  <main class="wrap" id="root">
+    <div class="print-head" aria-hidden="true" style="display:none"></div>
+    <ol id="steps" aria-live="polite"></ol>
+  </main>
+
+<script>
+  const stepsEl = document.getElementById('steps');
+  const inputEl = document.getElementById('newText');
+  const addBtn  = document.getElementById('addBtn');
+  const printBtn= document.getElementById('printBtn');
+  const bigBtn  = document.getElementById('bigBtn');
+  const clearBtn= document.getElementById('clearBtn');
+  const titleEl = document.getElementById('title');
+  const root    = document.getElementById('root');
+
+  let data = load();
+
+  function save(){
+    const items = [...stepsEl.querySelectorAll('.item')].map(li => ({
+      text: li.querySelector('.txt').innerText.trim(),
+      done: li.querySelector('.done').checked
+    }));
+    const title = titleEl.innerText.trim();
+    localStorage.setItem('mitooshi_board', JSON.stringify({ title, items }));
+  }
+  function load(){
+    try{
+      const raw = localStorage.getItem('mitooshi_board');
+      if(!raw) return { title:'きょうのやること', items:[] };
+      return JSON.parse(raw);
+    }catch(e){ return { title:'きょうのやること', items:[] } }
+  }
+  function apply(){
+    titleEl.innerText = data.title || 'きょうのやること';
+    stepsEl.innerHTML = '';
+    data.items.forEach((it, idx) => stepsEl.appendChild(makeItem(it.text, it.done, idx)));
+    renumber();
+  }
+  function makeItem(text='', done=false, index=0){
+    const li = document.createElement('li');
+    li.className = 'item';
+    li.innerHTML = `
+      <div class="num" aria-hidden="true">${index+1}</div>
+      <div class="txt" contenteditable="plaintext-only" spellcheck="false"></div>
+      <div class="ctrls">
+         <input type="checkbox" class="done" ${done?'checked':''} title="完了" />
+         <button class="ghost up" title="上へ">↑</button>
+         <button class="ghost down" title="下へ">↓</button>
+         <button class="ghost del" title="削除">✕</button>
+      </div>
+    `;
+    li.querySelector('.txt').innerText = text || '';
+    // listeners
+    li.querySelector('.txt').addEventListener('input', save);
+    li.querySelector('.done').addEventListener('change', e=>{
+      li.style.opacity = e.target.checked ? .55 : 1;
+      li.style.textDecoration = e.target.checked ? 'line-through' : 'none';
+      save();
+    });
+    li.querySelector('.up').addEventListener('click', ()=>{
+      const prev = li.previousElementSibling;
+      if(prev){ stepsEl.insertBefore(li, prev); renumber(); save(); }
+    });
+    li.querySelector('.down').addEventListener('click', ()=>{
+      const next = li.nextElementSibling?.nextElementSibling;
+      stepsEl.insertBefore(li, next || null);
+      renumber(); save();
+    });
+    li.querySelector('.del').addEventListener('click', ()=>{
+      li.remove(); renumber(); save();
+    });
+    // initial done style
+    if(done){ li.style.opacity=.55; li.style.textDecoration='line-through'; }
+    return li;
+  }
+  function renumber(){
+    [...stepsEl.children].forEach((li,i)=> li.querySelector('.num').textContent = i+1);
+  }
+
+  function add(text){
+    const li = makeItem(text, false, stepsEl.children.length);
+    stepsEl.appendChild(li);
+    renumber(); save();
+    // scroll & focus
+    li.querySelector('.txt').focus();
+    placeCaretEnd(li.querySelector('.txt'));
+  }
+  function placeCaretEnd(el){
+    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+
+  // Controls
+  addBtn.addEventListener('click', ()=>{
+    const v = inputEl.value.trim();
+    if(!v) return inputEl.focus();
+    add(v); inputEl.value='';
+  });
+  inputEl.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); addBtn.click(); }
+  });
+  printBtn.addEventListener('click', ()=> window.print());
+  bigBtn.addEventListener('click', ()=>{
+    document.body.classList.toggle('big');
+    bigBtn.textContent = document.body.classList.contains('big') ? 'ふつう表示' : '大きく表示';
+  });
+  clearBtn.addEventListener('click', ()=>{
+    if(confirm('ぜんぶ消します。よろしいですか？')){
+      stepsEl.innerHTML=''; save(); renumber();
+    }
+  });
+  titleEl.addEventListener('input', save);
+
+  // First render
+  apply();
+
+  // 使い始めに空ならテンプレを少しだけ
+  if(stepsEl.children.length===0){
+    ['あさのしたく','１じかんめ さんすう','２じかんめ こくご'].forEach(t=>add(t));
+  }
+</script>
+</body>
+</html>
