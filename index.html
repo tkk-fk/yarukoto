@@ -76,15 +76,12 @@
   .big .txt{ font-size:clamp(1.3rem, 4.2vw, 1.6rem) }
   /* 印刷 */
   @media print{
-    header, .hint, .ctrls button:not(.ghost){ display:none !important }
+    .bar, .hint, .ctrls button:not(.ghost){ display:none !important }
     body{ background:#fff }
     .wrap{ max-width:none; padding:0 }
     main{ padding:0 }
-    .print-head{
-      display:flex; justify-content:space-between; align-items:flex-end; margin:0 0 8px;
-      font-size:14pt;
-    }
-    .print-head small{ font-size:11pt }
+    h1{ display:block; margin:0 0 12pt; font-size:18pt; }
+    h1 span{ border:none !important; background:none !important; }
     ol#steps{ gap:8pt }
     .item{ border:1pt solid #000; border-radius:8pt; padding:10pt; page-break-inside:avoid }
     .num{ background:#fff; border:1pt solid #000; width:28pt; height:28pt; border-radius:6pt; font-size:12pt }
@@ -110,7 +107,6 @@
   </header>
 
   <main class="wrap" id="root">
-    <div class="print-head" aria-hidden="true" style="display:none"></div>
     <ol id="steps" aria-live="polite"></ol>
   </main>
 
